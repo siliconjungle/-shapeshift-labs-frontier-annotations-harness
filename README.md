@@ -2,7 +2,7 @@
 
 Node browser harness for turning Frontier DOM annotation threads into Loom/frontier-swarm Codex task artifacts.
 
-The harness is the operational bridge for `@shapeshift-labs/frontier-annotations`: it serves the browser endpoint, injects the dark annotation overlay into a Playwright page when requested, scans app source files or accepts prebuilt source records, writes bounded context packs, and emits Loom-compatible `manifest.json` plus `tasks.json` files. It can also start `loom swarm plan && loom swarm run` when an annotation thread is submitted.
+The harness is the operational bridge for `@shapeshift-labs/frontier-annotations`: it serves the browser endpoint, injects the dark annotation overlay into a Playwright page when requested, captures selected-element screenshots and canvas click crops, scans app source files or accepts prebuilt source records, writes bounded context packs, and emits Loom-compatible `manifest.json` plus `tasks.json` files. It can also start `loom swarm plan && loom swarm run` when an annotation thread is submitted.
 
 The package keeps Playwright, Loom, Codex credentials, source graph builders, and worker execution host-owned. Core exports are serializable records, file artifacts, a small HTTP server, and CLI helpers.
 
@@ -240,7 +240,7 @@ frontier-annotations-harness serve \
   --semantic-import
 ```
 
-This starts a local endpoint at `/__frontier/annotations`, opens the page with Playwright, injects the annotation overlay, accepts submitted thread messages, writes a run directory, and optionally starts Loom/frontier-swarm.
+This starts a local endpoint at `/__frontier/annotations`, opens the page with Playwright, injects the annotation overlay, accepts submitted thread messages, writes a run directory, attaches PNG screenshots to the annotation task context, and optionally starts Loom/frontier-swarm.
 
 ## Artifact Planning
 
@@ -257,6 +257,7 @@ Each run directory contains:
 - `annotations/*.json`
 - `contexts/*.json`
 - `codex-tasks/*.json`
+- `screenshots/*.png` when `serve --url` has a Playwright page
 - `submission.json`
 - `queue.json`
 - `manifest.json`

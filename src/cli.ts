@@ -54,7 +54,10 @@ async function serveCommand(args: Record<string, string | boolean | string[]>) {
     host: stringArg(args, 'host') ?? '127.0.0.1',
     port: numberArg(args, 'port'),
     endpointPath: stringArg(args, 'endpoint') ?? '/__frontier/annotations',
-    runSwarm: booleanArg(args, 'run-swarm')
+    runSwarm: booleanArg(args, 'run-swarm'),
+    screenshots: booleanArg(args, 'no-screenshots') ? false : {
+      cropSize: numberArg(args, 'screenshot-crop-size')
+    }
   };
   const url = stringArg(args, 'url');
   const handle = url
@@ -176,5 +179,7 @@ Key options:
   --allow-write <path>        Allowed write path. Repeatable.
   --run-swarm                 Start Loom swarm after accepting an annotation.
   --semantic-import           Ask Loom/frontier-swarm to include semantic sidecars.
+  --no-screenshots            Disable browser screenshot capture for serve --url.
+  --screenshot-crop-size <n>  Canvas click crop size in CSS pixels. Default: 256.
 `);
 }

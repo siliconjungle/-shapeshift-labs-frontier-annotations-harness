@@ -1,6 +1,6 @@
 {
   "name": "@shapeshift-labs/frontier-annotations-harness",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Node browser annotation harness that turns Frontier DOM annotations into Loom/frontier-swarm Codex task artifacts.",
   "type": "module",
   "license": "MIT",
@@ -33,6 +33,11 @@
       "types": "./dist/cli.d.ts",
       "import": "./dist/cli.js",
       "default": "./dist/cli.js"
+    },
+    "./screenshots": {
+      "types": "./dist/screenshots.d.ts",
+      "import": "./dist/screenshots.js",
+      "default": "./dist/screenshots.js"
     },
     "./types": {
       "types": "./dist/types.d.ts",
@@ -71,7 +76,7 @@
     "ai"
   ],
   "dependencies": {
-    "@shapeshift-labs/frontier-annotations": "0.1.5"
+    "@shapeshift-labs/frontier-annotations": "0.1.6"
   },
   "peerDependencies": {
     "playwright": ">=1.40.0"

@@ -9,6 +9,9 @@ import {
   writeFrontierAnnotationHarnessArtifacts
 } from './artifacts.js';
 import {
+  captureFrontierAnnotationScreenshots
+} from './screenshots.js';
+import {
   spawnFrontierAnnotationSwarmArtifacts
 } from './runner.js';
 import type {
@@ -43,15 +46,19 @@ export async function startFrontierAnnotationHarnessServer(
     try {
       const input = JSON.parse(await readBody(request, maxBodyBytes)) as FrontierAnnotationHarnessInput;
       const preview = planFrontierAnnotationHarness(input, options);
+      const cwd = path.resolve(options.cwd ?? process.cwd());
       const outDir = options.outDir
-        ? path.join(path.resolve(options.cwd ?? process.cwd(), options.outDir), preview.submission.id)
+        ? path.join(path.resolve(cwd, options.outDir), preview.submission.id)
         : undefined;
-      const artifacts = writeFrontierAnnotationHarnessArtifacts(input, { ...options, outDir });
+      const rootDir = outDir ?? path.join(cwd, 'agent-runs', preview.submission.id);
+      const enrichedInput = await captureFrontierAnnotationScreenshots(input, { ...options, outDir, rootDir });
+      const artifacts = writeFrontierAnnotationHarnessArtifacts(enrichedInput, { ...options, outDir });
       const spawned = options.runSwarm ? spawnFrontierAnnotationSwarmArtifacts(artifacts, options.swarm) : undefined;
       writeJson(response, 200, {
         accepted: true,
         submissionId: artifacts.submission.id,
         taskIds: artifacts.tasks.map((task) => task.id),
+        media: artifacts.submission.annotations.flatMap((annotation) => annotation.media ?? []),
         manifestPath: artifacts.paths.manifestPath,
         tasksPath: artifacts.paths.swarmTasksPath,
         queuePath: artifacts.paths.queuePath,
@@ -86,42 +93,49 @@ export async function startFrontierAnnotationHarnessServer(
 export async function startFrontierAnnotationBrowserHarness(
   options: FrontierAnnotationBrowserHarnessOptions
 ): Promise<FrontierAnnotationBrowserHarnessHandle> {
-  const server = await startFrontierAnnotationHarnessServer(options);
   let browser = options.browser as any;
   let page = options.page as any;
-  if (!page) {
-    const playwright = await loadPlaywright();
-    browser = browser ?? await playwright.chromium.launch({ headless: options.headless ?? false });
-    page = await browser.newPage();
-    await page.goto(options.url);
-  } else if (options.url && typeof page.goto === 'function') {
-    await page.goto(options.url);
-  }
-  const overlay: FrontierAnnotationInstallOptions = {
-    endpoint: server.endpoint,
-    feature: options.feature,
-    package: options.package,
-    route: options.context?.route,
-    actor: options.actor,
-    buttonLabel: options.overlay?.buttonLabel,
-    placeholder: options.overlay?.placeholder,
-    submitOnCreate: options.overlay?.submitOnCreate,
-    includeCss: options.overlay?.includeCss,
-    includeComputedStyle: options.overlay?.includeComputedStyle,
-    maxCssRules: options.overlay?.maxCssRules,
-    zIndex: options.overlay?.zIndex,
-    metadata: options.overlay?.metadata
-  };
-  await installFrontierAnnotationOverlay(page, overlay);
-  return {
-    ...server,
-    browser,
-    page,
-    async close() {
-      await server.close();
-      if (!options.page && browser && typeof browser.close === 'function') await browser.close();
+  let server: FrontierAnnotationHarnessServerHandle | undefined;
+  try {
+    if (!page) {
+      const playwright = await loadPlaywright();
+      browser = browser ?? await playwright.chromium.launch({ headless: options.headless ?? false });
+      page = await browser.newPage();
+      await page.goto(options.url);
+    } else if (options.url && typeof page.goto === 'function') {
+      await page.goto(options.url);
     }
-  };
+    server = await startFrontierAnnotationHarnessServer({ ...options, screenshotPage: page });
+    const overlay: FrontierAnnotationInstallOptions = {
+      endpoint: server.endpoint,
+      feature: options.feature,
+      package: options.package,
+      route: options.context?.route,
+      actor: options.actor,
+      buttonLabel: options.overlay?.buttonLabel,
+      placeholder: options.overlay?.placeholder,
+      submitOnCreate: options.overlay?.submitOnCreate,
+      includeCss: options.overlay?.includeCss,
+      includeComputedStyle: options.overlay?.includeComputedStyle,
+      maxCssRules: options.overlay?.maxCssRules,
+      zIndex: options.overlay?.zIndex,
+      metadata: options.overlay?.metadata
+    };
+    await installFrontierAnnotationOverlay(page, overlay);
+    return {
+      ...server,
+      browser,
+      page,
+      async close() {
+        await server?.close();
+        if (!options.page && browser && typeof browser.close === 'function') await browser.close();
+      }
+    };
+  } catch (error) {
+    if (server) await server.close().catch(() => undefined);
+    if (!options.page && browser && typeof browser.close === 'function') await browser.close().catch(() => undefined);
+    throw error;
+  }
 }
 
 async function loadPlaywright() {

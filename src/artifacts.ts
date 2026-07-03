@@ -251,6 +251,7 @@ function createPaths(rootDir: string): FrontierAnnotationHarnessPaths {
     annotationsDir: path.join(rootDir, 'annotations'),
     contextsDir: path.join(rootDir, 'contexts'),
     tasksDir: path.join(rootDir, 'codex-tasks'),
+    screenshotsDir: path.join(rootDir, 'screenshots'),
     submissionPath: path.join(rootDir, 'submission.json'),
     queuePath: path.join(rootDir, 'queue.json'),
     manifestPath: path.join(rootDir, 'manifest.json'),

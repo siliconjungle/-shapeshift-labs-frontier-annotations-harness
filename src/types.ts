@@ -55,6 +55,26 @@ export interface FrontierAnnotationHarnessSwarmOptions {
   extraRunArgs?: readonly string[];
 }
 
+export interface FrontierAnnotationHarnessScreenshotLocatorLike {
+  first?(): FrontierAnnotationHarnessScreenshotLocatorLike;
+  boundingBox?(): Promise<{ x: number; y: number; width: number; height: number } | null>;
+  screenshot?(options: { path: string }): Promise<unknown>;
+}
+
+export interface FrontierAnnotationHarnessScreenshotPageLike {
+  locator?(selector: string): FrontierAnnotationHarnessScreenshotLocatorLike;
+  screenshot?(options: { path: string; clip?: { x: number; y: number; width: number; height: number } }): Promise<unknown>;
+  viewportSize?(): { width: number; height: number } | null;
+}
+
+export interface FrontierAnnotationHarnessScreenshotOptions {
+  enabled?: boolean;
+  captureElement?: boolean;
+  captureCanvasCrop?: boolean;
+  cropSize?: number;
+  dirName?: string;
+}
+
 export interface FrontierAnnotationHarnessPlanOptions extends FrontierAnnotationHarnessSourceLoadOptions {
   cwd?: string;
   outDir?: string;
@@ -84,6 +104,7 @@ export interface FrontierAnnotationHarnessPaths {
   annotationsDir: string;
   contextsDir: string;
   tasksDir: string;
+  screenshotsDir: string;
   submissionPath: string;
   queuePath: string;
   manifestPath: string;
@@ -186,6 +207,8 @@ export interface FrontierAnnotationHarnessServerOptions extends FrontierAnnotati
   endpointPath?: string;
   runSwarm?: boolean;
   maxBodyBytes?: number;
+  screenshots?: boolean | FrontierAnnotationHarnessScreenshotOptions;
+  screenshotPage?: FrontierAnnotationHarnessScreenshotPageLike;
 }
 
 export interface FrontierAnnotationHarnessServerHandle {

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   collectFrontierAnnotationSourceRecords,
+  captureFrontierAnnotationScreenshots,
   planFrontierAnnotationHarness,
   startFrontierAnnotationHarnessServer,
   writeFrontierAnnotationHarnessArtifacts
@@ -63,6 +64,27 @@ for (const file of [
 const swarmTasks = JSON.parse(fs.readFileSync(artifacts.paths.swarmTasksPath, 'utf8'));
 assert.strictEqual(swarmTasks[0].verification[0], 'npm test');
 
+const screenshotWrites = [];
+const fakePage = makeFakePage(screenshotWrites);
+const canvasAnnotation = makeCanvasAnnotation();
+const enrichedCanvas = await captureFrontierAnnotationScreenshots(canvasAnnotation, {
+  cwd: appDir,
+  rootDir: path.join(temp, 'canvas-run'),
+  screenshotPage: fakePage,
+  screenshots: { cropSize: 128 }
+});
+assert.strictEqual(enrichedCanvas.media.length, 2);
+assert.strictEqual(enrichedCanvas.media[0].role, 'element-screenshot');
+assert.strictEqual(enrichedCanvas.media[1].role, 'canvas-click-crop');
+assert.strictEqual(fs.existsSync(enrichedCanvas.media[0].file), true);
+assert.strictEqual(fs.existsSync(enrichedCanvas.media[1].file), true);
+assert.deepStrictEqual(screenshotWrites.find((write) => write.kind === 'page').clip, {
+  x: 176,
+  y: 116,
+  width: 128,
+  height: 128
+});
+
 const planned = planFrontierAnnotationHarness(annotation, {
   cwd: appDir,
   sourceRecords: sources,
@@ -76,6 +98,7 @@ const server = await startFrontierAnnotationHarnessServer({
   outDir: path.join(temp, 'server-runs'),
   sourceRoots: ['src'],
   verification: ['npm test'],
+  screenshotPage: fakePage,
   port: 0
 });
 try {
@@ -88,7 +111,13 @@ try {
   const result = await response.json();
   assert.strictEqual(result.accepted, true);
   assert.strictEqual(result.taskIds.length, 1);
+  assert.strictEqual(result.media.length, 1);
+  assert.strictEqual(result.media[0].role, 'element-screenshot');
+  assert.strictEqual(fs.existsSync(result.media[0].file), true);
   assert.strictEqual(fs.existsSync(result.manifestPath), true);
+  const task = JSON.parse(fs.readFileSync(result.tasksPath, 'utf8'))[0];
+  assert.ok(task.prompt.includes('Visual artifacts:'));
+  assert.ok(task.prompt.includes(result.media[0].file));
 } finally {
   await server.close();
 }
@@ -160,6 +189,69 @@ function makeAnnotation() {
     route: '/editor',
     createdAt: 1,
     status: 'submitted'
+  };
+}
+
+function makeCanvasAnnotation() {
+  const annotation = makeAnnotation();
+  return {
+    ...annotation,
+    id: 'annotation-canvas',
+    note: 'Fix the selected canvas interaction.',
+    target: {
+      tagName: 'canvas',
+      selector: '#game',
+      cssPath: 'main > canvas#game',
+      id: 'game',
+      attributes: { id: 'game' },
+      dataset: {},
+      rect: { x: 20, y: 30, width: 400, height: 300, top: 30, right: 420, bottom: 330, left: 20 },
+      click: {
+        clientX: 240,
+        clientY: 180,
+        pageX: 240,
+        pageY: 180,
+        offsetX: 220,
+        offsetY: 150,
+        relativeX: 220,
+        relativeY: 150,
+        ratioX: 0.55,
+        ratioY: 0.5
+      },
+      ancestry: [{ tagName: 'canvas', selector: '#game', id: 'game' }]
+    },
+    sourceHints: [{ file: 'src/components/SaveButton.tsx', line: 1, symbol: 'GameCanvas' }]
+  };
+}
+
+function makeFakePage(writes) {
+  return {
+    locator(selector) {
+      const box = selector === '#game'
+        ? { x: 20, y: 30, width: 400, height: 300 }
+        : { x: 0, y: 0, width: 120, height: 32 };
+      return {
+        first() {
+          return this;
+        },
+        async boundingBox() {
+          return box;
+        },
+        async screenshot(options) {
+          writes.push({ kind: 'locator', selector, path: options.path });
+          fs.mkdirSync(path.dirname(options.path), { recursive: true });
+          fs.writeFileSync(options.path, 'fake-png', 'utf8');
+        }
+      };
+    },
+    async screenshot(options) {
+      writes.push({ kind: 'page', path: options.path, clip: options.clip });
+      fs.mkdirSync(path.dirname(options.path), { recursive: true });
+      fs.writeFileSync(options.path, 'fake-crop-png', 'utf8');
+    },
+    viewportSize() {
+      return { width: 800, height: 600 };
+    }
   };
 }
 
