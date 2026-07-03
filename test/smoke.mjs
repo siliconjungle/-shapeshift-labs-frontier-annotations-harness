@@ -8,6 +8,7 @@ import {
   collectFrontierAnnotationSourceRecords,
   captureFrontierAnnotationScreenshots,
   planFrontierAnnotationHarness,
+  startFrontierAnnotationBrowserHarness,
   startFrontierAnnotationHarnessServer,
   writeFrontierAnnotationHarnessArtifacts
 } from '../dist/index.js';
@@ -121,6 +122,34 @@ try {
 } finally {
   await server.close();
 }
+
+const fakeBrowserContext = makeFakeBrowserContext();
+const fakeHarnessPage = makeFakeHarnessPage(fakeBrowserContext);
+const browserHarness = await startFrontierAnnotationBrowserHarness({
+  page: fakeHarnessPage,
+  url: 'http://example.test/editor',
+  cwd: appDir,
+  sourceRoots: ['src'],
+  overlay: {
+    placeholder: 'tell the swarm...'
+  },
+  port: 0
+});
+try {
+  assert.strictEqual(fakeHarnessPage.gotoUrl, 'http://example.test/editor');
+  assert.strictEqual(fakeBrowserContext.initScripts.length, 1);
+  assert.strictEqual(fakeHarnessPage.initScripts.length, 1);
+  assert.strictEqual(fakeHarnessPage.evaluations.length, 1);
+  assert.strictEqual(typeof fakeBrowserContext.listeners.get('page'), 'function');
+  const popup = makeFakeHarnessPage(fakeBrowserContext);
+  await fakeBrowserContext.listeners.get('page')(popup);
+  assert.strictEqual(popup.waitedForLoadState, 'domcontentloaded');
+  assert.strictEqual(popup.initScripts.length, 1);
+  assert.strictEqual(popup.evaluations.length, 1);
+} finally {
+  await browserHarness.close();
+}
+assert.strictEqual(fakeBrowserContext.listeners.has('page'), false);
 
 const annotationPath = path.join(temp, 'annotation.json');
 const cliOutDir = path.join(temp, 'cli-run');
@@ -251,6 +280,47 @@ function makeFakePage(writes) {
     },
     viewportSize() {
       return { width: 800, height: 600 };
+    }
+  };
+}
+
+function makeFakeBrowserContext() {
+  return {
+    initScripts: [],
+    listeners: new Map(),
+    async addInitScript(script) {
+      this.initScripts.push(script);
+    },
+    on(event, listener) {
+      this.listeners.set(event, listener);
+    },
+    off(event, listener) {
+      if (this.listeners.get(event) === listener) this.listeners.delete(event);
+    }
+  };
+}
+
+function makeFakeHarnessPage(context) {
+  return {
+    initScripts: [],
+    evaluations: [],
+    gotoUrl: '',
+    waitedForLoadState: '',
+    context() {
+      return context;
+    },
+    async goto(url) {
+      this.gotoUrl = url;
+    },
+    async addInitScript(script) {
+      this.initScripts.push(script);
+    },
+    async evaluate(content) {
+      this.evaluations.push(content);
+      return {};
+    },
+    async waitForLoadState(state) {
+      this.waitedForLoadState = state;
     }
   };
 }

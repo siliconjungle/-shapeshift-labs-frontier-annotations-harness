@@ -1,6 +1,7 @@
 import http from 'node:http';
 import path from 'node:path';
 import {
+  createFrontierAnnotationOverlayScript,
   installFrontierAnnotationOverlay
 } from '@shapeshift-labs/frontier-annotations/browser';
 import type { FrontierAnnotationInstallOptions } from '@shapeshift-labs/frontier-annotations';
@@ -96,6 +97,7 @@ export async function startFrontierAnnotationBrowserHarness(
   let browser = options.browser as any;
   let page = options.page as any;
   let server: FrontierAnnotationHarnessServerHandle | undefined;
+  let cleanupOverlayPages: (() => void) | undefined;
   try {
     if (!page) {
       const playwright = await loadPlaywright();
@@ -121,20 +123,54 @@ export async function startFrontierAnnotationBrowserHarness(
       zIndex: options.overlay?.zIndex,
       metadata: options.overlay?.metadata
     };
-    await installFrontierAnnotationOverlay(page, overlay);
+    cleanupOverlayPages = await installFrontierAnnotationOverlayAcrossContext(page, overlay);
     return {
       ...server,
       browser,
       page,
       async close() {
+        cleanupOverlayPages?.();
         await server?.close();
         if (!options.page && browser && typeof browser.close === 'function') await browser.close();
       }
     };
   } catch (error) {
+    cleanupOverlayPages?.();
     if (server) await server.close().catch(() => undefined);
     if (!options.page && browser && typeof browser.close === 'function') await browser.close().catch(() => undefined);
     throw error;
+  }
+}
+
+async function installFrontierAnnotationOverlayAcrossContext(
+  page: any,
+  overlay: FrontierAnnotationInstallOptions
+): Promise<() => void> {
+  const context = typeof page?.context === 'function' ? page.context() : undefined;
+  const content = createFrontierAnnotationOverlayScript(overlay);
+  if (context && typeof context.addInitScript === 'function') {
+    await context.addInitScript({ content });
+  }
+  await installFrontierAnnotationOverlay(page, overlay);
+  if (!context || typeof context.on !== 'function') return () => undefined;
+
+  const onPage = (nextPage: any) => installOverlayOnPage(nextPage, overlay);
+  context.on('page', onPage);
+  return () => {
+    if (typeof context.off === 'function') context.off('page', onPage);
+    else if (typeof context.removeListener === 'function') context.removeListener('page', onPage);
+  };
+}
+
+async function installOverlayOnPage(page: any, overlay: FrontierAnnotationInstallOptions) {
+  try {
+    if (typeof page?.waitForLoadState === 'function') {
+      await page.waitForLoadState('domcontentloaded', { timeout: 10_000 }).catch(() => undefined);
+    }
+    await installFrontierAnnotationOverlay(page, overlay);
+  } catch {
+    // New tabs can close before the first document is ready. The context init
+    // script still covers future navigations, so there is nothing useful to do.
   }
 }
 
