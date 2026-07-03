@@ -666,7 +666,7 @@
   {
     "id": "frontier-annotations",
     "name": "@shapeshift-labs/frontier-annotations",
-    "role": "Browser harness DOM annotation overlay, selected-node targeting records, CSS/source-hint capture, AST/source graph context ranking, and Codex/frontier-swarm task planning for AI-operable UI fixes.",
+    "role": "Browser harness DOM annotation overlay, selected-node targeting records, click geometry, optional image media refs, CSS/source-hint capture, AST/source graph context ranking, and Codex/frontier-swarm task planning for AI-operable UI fixes.",
     "npmUrl": "https://www.npmjs.com/package/@shapeshift-labs/frontier-annotations",
     "repoName": "siliconjungle/-shapeshift-labs-frontier-annotations",
     "repoUrl": "https://github.com/siliconjungle/-shapeshift-labs-frontier-annotations"
@@ -674,7 +674,7 @@
   {
     "id": "frontier-annotations-harness",
     "name": "@shapeshift-labs/frontier-annotations-harness",
-    "role": "Node browser annotation harness server and CLI for injecting Frontier annotation threads, collecting source context, writing Loom/frontier-swarm Codex task artifacts, and optionally starting swarm runs.",
+    "role": "Node browser annotation harness server and CLI for injecting Frontier annotation threads, capturing selected-element screenshots and canvas click crops, collecting source context, writing Loom/frontier-swarm Codex task artifacts, and optionally starting swarm runs.",
     "npmUrl": "https://www.npmjs.com/package/@shapeshift-labs/frontier-annotations-harness",
     "repoName": "siliconjungle/-shapeshift-labs-frontier-annotations-harness",
     "repoUrl": "https://github.com/siliconjungle/-shapeshift-labs-frontier-annotations-harness"
