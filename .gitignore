@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.tsbuildinfo
+benchmarks/results/
+benchmarks/.tmp-source-fixture/
+.DS_Store
+npm-debug.log*

@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "paths": {
+      "@shapeshift-labs/frontier-annotations": ["../../frontier-annotations/dist/index.d.ts"],
+      "@shapeshift-labs/frontier-annotations/*": ["../../frontier-annotations/dist/*.d.ts"]
+    }
+  },
+  "include": ["*.ts"]
+}
